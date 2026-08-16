@@ -13,7 +13,7 @@ const openai = new OpenAI({
 const PORT = process.env.PORT || 8080;
 
 const SYSTEM_PROMPT = `
-Eres Isabella Rojas ❤️, una asistente humana, cálida, espiritual y cercana que responde dudas por WhatsApp sobre el libro digital "Cuando Dios Habla".
+Eres Saly Ortiz ❤️, una asistente humana, cálidal y cercana que responde dudas por WhatsApp sobre el libro digital "Universo Canino".
 
 Tu trabajo es responder dudas de forma NATURAL, BREVE y HUMANA, como si fueras una persona real atendiendo con cariño.
 
@@ -42,26 +42,27 @@ REGLAS:
 - NO menciones correo electrónico.
 - NO digas que el libro es físico.
 
-INFORMACIÓN REAL:
-- El libro es DIGITAL en PDF.
-- El libro NO es físico.
-- El PDF YA fue enviado anteriormente por WhatsApp.
-- El usuario lo puede encontrar más arriba en esta misma conversación.
-- El libro está basado en la Biblia.
-- No pertenece a una religión específica.
-- No es exclusivamente católico.
-- Puede estudiarse con cualquier Biblia.
-- Las referencias de apoyo son:
-  - 70 MXN como gesto de gratitud
-  - 90 MXN para apoyar el proyecto
-  - 120 MXN para que este mensaje llegue a más personas
+IINFORMACIÓN REAL:
+
+- Universo Canino es una Biblioteca Digital en formato PDF.
+- Todo el material es 100% digital.
+- No se envía ningún producto físico.
+- La entrega se realiza por WhatsApp después de confirmar el pago.
+- El material puede leerse desde celular, tablet o computadora.
+- La Biblioteca Digital Universo Canino tiene un precio de 79 MXN e incluye un bono de 100 moldes para confeccionar ropa para mascotas.
+- La Biblioteca Digital Universo Canino + la guía "Cómo superar la pérdida de tu mejor amigo y honrar su recuerdo con amor" tiene un precio de 129 MXN.
+- Los métodos de pago son:
+  - Transferencia bancaria.
+  - Depósito en OXXO.
+- Una vez realizado el pago, el cliente debe enviar su comprobante junto con la palabra "LISTO".
+- Después de confirmar el pago, el material se entrega inmediatamente por WhatsApp.
 
 OBJETIVO:
-Después de resolver la duda de forma amable y humana, dirige suavemente a la persona al apoyo del proyecto espiritual mediante:
+Después de resolver la duda de forma amable y humana, confirma el deposito o transferencia mediante:
 - transferencia bancaria
 - depósito en Oxxo
 
-Haz que el cierre se sienta natural, amable y espiritual, nunca como presión de venta.
+Haz que el cierre se sienta natural, amable, nunca como presión de venta.
 `;
 
 function normalizarTexto(texto) {
@@ -98,15 +99,15 @@ function limpiarRespuesta(texto) {
 
 function cierrePago() {
   const cierres = [
-    `💌 Puedes apoyar este proyecto espiritual por transferencia bancaria o depósito en Oxxo ✨
+    `💌 Puedes comprar la biblioteca universo canino por transferencia bancaria o depósito en Oxxo ✨
 
 ¿Cuál método prefieres? 🙏`,
 
-    `💌 Si deseas apoyar este proyecto espiritual, puedes hacerlo por transferencia bancaria o depósito en Oxxo ✨
+    `💌 Si deseas adquirir universo canino, puedes hacerlo por transferencia bancaria o depósito en Oxxo ✨
 
 ¿Qué método prefieres? 🙏`,
 
-    `💌 Para apoyar este proyecto espiritual puedes elegir transferencia bancaria o depósito en Oxxo ✨
+    `💌 Para adquirir universo canino puedes elegir transferencia bancaria o depósito en Oxxo ✨
 
 ¿Cuál opción prefieres? 🙏`,
   ];
@@ -126,30 +127,34 @@ function agregarCierre(texto) {
 ${cierrePago()}`;
 }
 
-function respuestaDirecta(textoNormalizado) {
-  if (
-    textoNormalizado.includes("catolico") ||
-    textoNormalizado.includes("catolica") ||
-    textoNormalizado.includes("religion") ||
-    textoNormalizado.includes("religioso") ||
-    textoNormalizado.includes("cristiano") ||
-    textoNormalizado.includes("cristiana")
-  ) {
-    const respuestasReligion = [
-      `No es un libro católico como tal, ni pertenece a una religión específica 🌿
+if (
+  textoNormalizado.includes("raza") ||
+  textoNormalizado.includes("razas") ||
+  textoNormalizado.includes("cachorro") ||
+  textoNormalizado.includes("adulto") ||
+  textoNormalizado.includes("viejito") ||
+  textoNormalizado.includes("senior") ||
+  textoNormalizado.includes("perro") ||
+  textoNormalizado.includes("perrita") ||
+  textoNormalizado.includes("funciona") ||
+  textoNormalizado.includes("sirve")
+) {
+  const respuestasCompatibilidad = [
+    `Sí 😊
 
-Es una guía basada en la Biblia que puedes estudiar con cualquier Biblia que tengas en casa.`,
+La Biblioteca Digital Universo Canino está pensada para cualquier raza y para todas las etapas de la vida de tu perro, desde cachorro hasta adulto mayor. Encontrarás información práctica que podrás aplicar sin importar el tamaño o la raza de tu mascota. 🐶`,
 
-      `No pertenece a una religión en específico 😊
+    `Claro 🐾
 
-Es un material basado en la Biblia, pensado para acompañarte en tu vida espiritual de una forma sencilla y cercana.`,
+El contenido está diseñado para ayudar a cualquier dueño de perro. Incluye temas de salud, alimentación, educación, primeros auxilios y cuidados para perros de todas las edades y razas.`,
 
-      `Es una guía bíblica, no un libro religioso de una denominación específica 🌿
+    `Sí, sin problema ❤️
 
-Puedes estudiarlo con la Biblia que tengas en casa, sin importar tu tradición religiosa.`,
-    ];
+La información de Universo Canino no está enfocada en una sola raza. Es una biblioteca creada para ayudarte a cuidar mejor a tu perro, ya sea cachorro, adulto o senior.`
+  ];
 
-    return agregarCierre(elegirAleatoria(respuestasReligion));
+  return agregarCierre(elegirAleatoria(respuestasCompatibilidad));
+}
   }
 
   if (
@@ -196,32 +201,31 @@ El PDF ya está enviado más arriba en este mismo chat de WhatsApp. No llega nad
     textoNormalizado.includes("apoyo") ||
     textoNormalizado.includes("apoyar") ||
     textoNormalizado.includes("aportacion") ||
-    textoNormalizado.includes("donacion") ||
+    textoNormalizado.includes("compra") ||
     textoNormalizado.includes("pagar") ||
     textoNormalizado.includes("pago")
   ) {
     const respuestasPago = [
-      `El libro se comparte como una bendición 🙏
+      `El libro se comparte como información para dueños de mascotas 🙏
 
-Si nace en tu corazón apoyar este proyecto espiritual, las referencias son:
-🌿 70 MXN como gesto de gratitud
-🌿 90 MXN para apoyar el proyecto
-🌿 120 MXN para que este mensaje llegue a más personas`,
+const respuestasPago = [
 
-      `El material ya fue compartido con mucho cariño 😊
+`La Biblioteca Digital Universo Canino tiene un precio especial de **$79 MXN** e incluye un bono de **100 moldes para confeccionar ropa para mascotas**. 🐶📚
 
-Para apoyar el proyecto, puedes elegir una de estas referencias:
-🌿 70 MXN como gesto de gratitud
-🌿 90 MXN para apoyar el proyecto
-🌿 120 MXN para ayudar a que llegue a más personas`,
+Si prefieres la experiencia más completa, por **$129 MXN** también recibirás la guía especial **"Cómo superar la pérdida de tu mejor amigo y honrar su recuerdo con amor".`,
 
-      `Este proyecto se sostiene con el apoyo de las personas que reciben el material 🙏
+`Actualmente puedes elegir entre dos formas de adquirir el material. 😊
 
-Puedes apoyar con:
-🌿 70 MXN como gesto de gratitud
-🌿 90 MXN para apoyar directamente el proyecto
-🌿 120 MXN para que este mensaje llegue a más personas`,
-    ];
+🐾 **Biblioteca Digital Universo Canino + Bono:** **$79 MXN**
+
+❤️ **Biblioteca + Bono + Guía especial sobre el duelo por la pérdida de tu mejor amigo:** **$129 MXN**.`,
+
+`Tenemos una promoción de lanzamiento para que elijas la opción que mejor se adapte a ti. 🐶
+
+📚 **Biblioteca Digital Universo Canino** con bono de **100 moldes para confeccionar ropa para mascotas:** **$79 MXN**.
+
+❤️ Si deseas el paquete más completo, puedes obtener la Biblioteca, el bono y la guía **"Cómo superar la pérdida de tu mejor amigo y honrar su recuerdo con amor"** por solo **$129 MXN**.`
+];
 
     return agregarCierre(elegirAleatoria(respuestasPago));
   }
