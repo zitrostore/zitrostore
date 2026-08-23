@@ -4,27 +4,48 @@ const express = require("express");
 const OpenAI = require("openai");
 
 const app = express();
-
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
 
 const PORT = process.env.PORT || 8080;
 
-/* =========================================================
-   UNIVERSO CANINO - SALLY ORTIZ
-   CAPA CONVERSACIONAL
-========================================================= */
+/*
+=========================================================
+OPENAI
+=========================================================
+*/
+
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+
+let openai = null;
+
+if (OPENAI_API_KEY) {
+  openai = new OpenAI({
+    apiKey: OPENAI_API_KEY,
+  });
+
+  console.log("OPENAI_API_KEY detectada correctamente ✅");
+} else {
+  console.error("ERROR: OPENAI_API_KEY no está configurada en Railway ❌");
+}
+
+/*
+=========================================================
+SYSTEM PROMPT
+=========================================================
+*/
 
 const SYSTEM_PROMPT = `
 Eres Sally Ortiz 🐶, asesora oficial de Universo Canino.
 
 Atiendes por WhatsApp a personas interesadas en la Biblioteca Digital Universo Canino.
 
-Hablas como una persona REAL:
+Tu trabajo es responder dudas de forma NATURAL, BREVE, HUMANA y CERCANA, como una persona real atendiendo con cariño.
+
+IDENTIDAD:
+
+Tu nombre es Sally Ortiz 🐶.
+
+Eres:
 - cálida
 - amable
 - cercana
@@ -35,57 +56,88 @@ Hablas como una persona REAL:
 Nunca dices que eres inteligencia artificial.
 Nunca dices que eres un bot.
 
-Tu misión es resolver las dudas del cliente sobre Universo Canino y conducir de forma natural la conversación hacia la compra.
-
 IMPORTANTE:
+
+- Nunca suenes robótica.
+- Nunca respondas exactamente igual cada vez.
+- Varía ligeramente las palabras y la estructura.
+- Mantén respuestas cálidas y naturales.
+- No escribas demasiado.
 - Responde máximo en 1 o 2 párrafos cortos.
-- Habla de forma natural y humana.
-- No escribas respuestas enormes.
-- No repitas exactamente la misma respuesta.
-- No presiones.
-- No inventes información.
-- Primero responde la duda.
-- Después puedes orientar suavemente hacia la compra.
+- Primero resuelve la duda.
+- Después orienta.
+- Finalmente invita de forma natural a realizar la compra.
+- Nunca presiones.
 
-NO DIGAS:
-- Hola
-- Buenos días
-- Buenas tardes
-- Buenas noches
-- ¿Te interesa?
-- ¿Quieres saber más?
-- ¿Quieres comprar?
-- ¿Te gustaría?
-- ¿En qué puedo ayudarte?
-- ¿Algo más?
-- ¿Te ayudo en algo más?
+REGLAS:
 
-PRODUCTO:
+- NO saludes.
+- NO uses "Hola".
+- NO digas "Buenos días".
+- NO digas "Buenas tardes".
+- NO digas "Buenas noches".
+- NO hagas múltiples preguntas.
+- NO hagas preguntas abiertas innecesarias.
+
+NO digas:
+
+- "¿Te interesa?"
+- "¿Quieres saber más?"
+- "¿Quieres comprar?"
+- "¿Te gustaría?"
+- "¿En qué puedo ayudarte?"
+- "¿Algo más?"
+- "¿Te ayudo en algo más?"
+- "¿Quieres que te cuente?"
+
+- NO seas agresiva vendiendo.
+- NO presiones.
+- NO inventes información.
+- NO menciones correo electrónico.
+- NO digas que el producto es físico.
+- NO inventes productos.
+- NO inventes precios.
+
+MISIÓN:
+
+Ayudar a los dueños de perros a conocer mejor la Biblioteca Digital Universo Canino y resolver sus dudas para que tengan información práctica para cuidar mejor a su mascota.
+
+OBJETIVO COMERCIAL:
+
+Convertir conversaciones de WhatsApp en ventas de la Biblioteca Digital Universo Canino.
+
+Siempre conduce la conversación de forma amable hacia la compra, sin presión.
+
+PRODUCTO PRINCIPAL:
 
 Biblioteca Digital Universo Canino.
 
 PRECIO:
+
 $79 MXN.
 
 INCLUYE:
 
-• Cuidados Básicos
-• Alimentación Canina
-• Dieta BARF
-• Primeros Auxilios
-• Manual para Dueños
-• Enciclopedia Canina
-• Geriatría
-• Recetario Saludable
-• Educación y Comportamiento
+- Cuidados Básicos
+- Alimentación Canina
+- Dieta BARF
+- Primeros Auxilios
+- Manual para Dueños
+- Enciclopedia Canina
+- Geriatría
+- Recetario Saludable
+- Educación y Comportamiento
 
 BONO:
 
 100 moldes para confeccionar ropa para mascotas.
 
-Todo el contenido es DIGITAL en formato PDF.
+FORMATO:
 
-Puede consultarse desde:
+Todo el contenido es DIGITAL en PDF.
+
+Compatible con:
+
 - celular
 - tablet
 - computadora
@@ -104,62 +156,97 @@ $129 MXN.
 
 Incluye:
 
-• Biblioteca Digital Universo Canino
-• Bono de 100 moldes
-• Guía especial:
+- Biblioteca Digital Universo Canino
+- Bono de 100 moldes
+- Guía especial:
 "Cómo superar la pérdida de tu mejor amigo y honrar su recuerdo con amor."
 
 MÉTODOS DE PAGO:
 
-• Transferencia bancaria
-• Depósito en OXXO
+- Transferencia bancaria
+- Depósito en OXXO
 
 PROCESO DE COMPRA:
 
-Después del pago, el cliente debe enviar:
+Después de realizar el pago, el cliente debe enviar:
 
 COMPROBANTE + palabra LISTO
 
 Después de confirmar el pago recibe el material correspondiente por WhatsApp.
 
+BENEFICIOS:
+
+Universo Canino ayuda al dueño a:
+
+- evitar errores comunes
+- conocer mejor la alimentación de su perro
+- aprender información sobre primeros auxilios
+- conocer mejor a su mascota
+- acompañar diferentes etapas de su vida
+- tener información clara y práctica
+
+DIFERENCIADOR:
+
+Universo Canino no vende solamente PDFs.
+
+Vende tranquilidad.
+Vende conocimiento.
+Vende prevención.
+Vende bienestar.
+
+Está pensado para personas que consideran a su perro parte de la familia.
+
 RESPUESTAS IMPORTANTES:
 
-PRECIO:
-Biblioteca Digital: $79 MXN.
-Biblioteca + Guía Especial: $129 MXN.
+Si preguntan PRECIO:
 
-QUÉ INCLUYE:
+Biblioteca Digital:
+$79 MXN.
+
+Biblioteca + Guía Especial:
+$129 MXN.
+
+Si preguntan QUÉ INCLUYE:
+
 Resume las principales guías y menciona el bono de 100 moldes.
 
-FORMATO:
-Todo es digital en PDF.
+Si preguntan si es PDF:
 
-ENTREGA:
+Sí.
+Todo es digital.
+
+Si preguntan CÓMO LO RECIBEN:
+
 Por WhatsApp después de confirmar el pago.
 
-PAGO:
+Si preguntan CÓMO PAGAR:
+
 Transferencia bancaria o depósito en OXXO.
 
-BONO:
-100 moldes para confeccionar ropa para mascotas.
+Si preguntan por el BONO:
 
-GUÍA ESPECIAL:
+Son 100 moldes para confeccionar ropa para mascotas.
+
+Si preguntan por la GUÍA ESPECIAL:
+
+Se llama:
 "Cómo superar la pérdida de tu mejor amigo y honrar su recuerdo con amor."
 
-OBJETIVO COMERCIAL:
+Está incluida en el paquete completo de $129 MXN.
 
-Ayuda primero.
-Resuelve la duda.
-Después orienta naturalmente hacia la compra.
+CIERRE:
 
-Nunca presiones al cliente.
-Nunca inventes información.
+Después de responder una duda relacionada con la compra, puedes cerrar de forma natural explicando que debe realizar su pago y enviar el comprobante junto con la palabra LISTO.
+
+Nunca cierres agresivamente.
+Nunca presiones.
 `;
 
-
-/* =========================================================
-   FUNCIONES AUXILIARES
-========================================================= */
+/*
+=========================================================
+FUNCIONES AUXILIARES
+=========================================================
+*/
 
 function normalizarTexto(texto) {
   return String(texto || "")
@@ -169,212 +256,48 @@ function normalizarTexto(texto) {
     .trim();
 }
 
-
 function elegirAleatoria(opciones) {
   return opciones[Math.floor(Math.random() * opciones.length)];
 }
 
-
 function limpiarRespuesta(texto) {
-  let limpio = String(texto || "").trim();
+  texto = String(texto || "").trim();
 
-  limpio = limpio
-    .replace(/^¡?\s*hola[\s,!.]*/i, "")
-    .replace(/^buenos días[\s,!.]*/i, "")
-    .replace(/^buenos dias[\s,!.]*/i, "")
-    .replace(/^buenas tardes[\s,!.]*/i, "")
-    .replace(/^buenas noches[\s,!.]*/i, "")
+  texto = texto
+    .replace(/^¡?\s*hola\s*[😊🙏❤️✨🌿🐶🐾💙,\.\!]*\s*/gi, "")
+    .replace(/^gracias por preguntar\s*[😊🙏❤️✨🌿🐶🐾💙,\.\!]*\s*/gi, "")
+    .replace(/^buenos días\s*[😊🙏❤️✨🌿🐶🐾💙,\.\!]*\s*/gi, "")
+    .replace(/^buenos dias\s*[😊🙏❤️✨🌿🐶🐾💙,\.\!]*\s*/gi, "")
+    .replace(/^buenas tardes\s*[😊🙏❤️✨🌿🐶🐾💙,\.\!]*\s*/gi, "")
+    .replace(/^buenas noches\s*[😊🙏❤️✨🌿🐶🐾💙,\.\!]*\s*/gi, "");
+
+  texto = texto
+    .replace(/\s{2,}/g, " ")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 
-  return limpio;
+  return texto;
 }
-
 
 /*
-  IMPORTANTE:
-  Esta función permite recibir mensajes aunque n8n
-  mande el texto con diferentes nombres o estructuras.
+=========================================================
+CIERRE DE PAGO
+=========================================================
 */
 
-function obtenerTexto(body) {
-
-  if (!body) {
-    return "";
-  }
-
-  /*
-    BODY como texto directo
-  */
-  if (typeof body === "string") {
-    return body.trim();
-  }
-
-  /*
-    FORMATOS DIRECTOS
-  */
-  const candidatosDirectos = [
-    body.texto,
-    body.mensaje,
-    body.message,
-    body.text,
-    body.content,
-    body.input,
-    body.query,
-    body.prompt
-  ];
-
-  for (const valor of candidatosDirectos) {
-    if (typeof valor === "string" && valor.trim()) {
-      return valor.trim();
-    }
-  }
-
-  /*
-    FORMATOS ANIDADOS COMUNES
-    MANYCHAT / N8N / WEBHOOK
-  */
-
-  if (body.body) {
-
-    if (typeof body.body === "string") {
-      return body.body.trim();
-    }
-
-    const candidatosBody = [
-      body.body.texto,
-      body.body.mensaje,
-      body.body.message,
-      body.body.text,
-      body.body.content
-    ];
-
-    for (const valor of candidatosBody) {
-      if (typeof valor === "string" && valor.trim()) {
-        return valor.trim();
-      }
-    }
-  }
-
-
-  if (body.data) {
-
-    const candidatosData = [
-      body.data.texto,
-      body.data.mensaje,
-      body.data.message,
-      body.data.text,
-      body.data.content
-    ];
-
-    for (const valor of candidatosData) {
-      if (typeof valor === "string" && valor.trim()) {
-        return valor.trim();
-      }
-    }
-  }
-
-
-  if (body.contact) {
-
-    const candidatosContact = [
-      body.contact.text,
-      body.contact.message,
-      body.contact.mensaje
-    ];
-
-    for (const valor of candidatosContact) {
-      if (typeof valor === "string" && valor.trim()) {
-        return valor.trim();
-      }
-    }
-  }
-
-
-  /*
-    ÚLTIMO RECURSO:
-    buscar recursivamente un campo de texto conocido.
-  */
-
-  const camposPermitidos = [
-    "texto",
-    "mensaje",
-    "message",
-    "text",
-    "content"
-  ];
-
-
-  function buscar(objeto, profundidad = 0) {
-
-    if (!objeto || profundidad > 5) {
-      return "";
-    }
-
-    if (typeof objeto !== "object") {
-      return "";
-    }
-
-    for (const campo of camposPermitidos) {
-
-      if (
-        typeof objeto[campo] === "string" &&
-        objeto[campo].trim()
-      ) {
-        return objeto[campo].trim();
-      }
-    }
-
-
-    for (const clave of Object.keys(objeto)) {
-
-      const valor = objeto[clave];
-
-      if (
-        valor &&
-        typeof valor === "object"
-      ) {
-
-        const encontrado = buscar(
-          valor,
-          profundidad + 1
-        );
-
-        if (encontrado) {
-          return encontrado;
-        }
-      }
-    }
-
-    return "";
-  }
-
-
-  return buscar(body);
-}
-
-
-/* =========================================================
-   CIERRE
-========================================================= */
-
 function cierrePago() {
-
   const cierres = [
+    `🐶 Para adquirir la Biblioteca puedes realizar tu pago por transferencia bancaria o depósito en OXXO. Después envía tu comprobante junto con la palabra LISTO y, al confirmarlo, recibirás tu material por WhatsApp. 💙`,
 
-    `🐶 Para adquirir Universo Canino puedes pagar por transferencia bancaria o depósito en OXXO. Después envía tu comprobante junto con la palabra LISTO y, al confirmar el pago, recibirás el material por WhatsApp. 💙`,
+    `🐾 Cuando decidas adquirir Universo Canino, puedes pagar por transferencia u OXXO. Después envíanos tu comprobante con la palabra LISTO para recibir el material por WhatsApp. 💙`,
 
-    `🐾 Cuando decidas adquirir la Biblioteca, puedes realizar tu pago por transferencia u OXXO. Después envíanos el comprobante con la palabra LISTO para recibir tu material por WhatsApp. 💙`,
-
-    `💙 La compra puede realizarse por transferencia bancaria o depósito en OXXO. Una vez realizado el pago, envía tu comprobante junto con la palabra LISTO. 🐶`
+    `💙 Para realizar tu compra puedes elegir transferencia bancaria o depósito en OXXO. Después manda tu comprobante junto con la palabra LISTO y recibirás tu material una vez confirmado el pago. 🐶`,
   ];
 
   return elegirAleatoria(cierres);
 }
 
-
 function agregarCierre(texto) {
-
   const limpio = limpiarRespuesta(texto);
 
   if (!limpio) {
@@ -386,15 +309,16 @@ function agregarCierre(texto) {
 ${cierrePago()}`;
 }
 
-
-/* =========================================================
-   RESPUESTAS DIRECTAS
-========================================================= */
+/*
+=========================================================
+RESPUESTAS DIRECTAS
+=========================================================
+*/
 
 function respuestaDirecta(textoNormalizado) {
 
   /*
-    PRECIO
+  PRECIO
   */
 
   if (
@@ -404,53 +328,45 @@ function respuestaDirecta(textoNormalizado) {
     textoNormalizado === "79" ||
     textoNormalizado === "129"
   ) {
-
-    const respuestas = [
-
+    const respuestasPrecio = [
       `La Biblioteca Digital Universo Canino cuesta $79 MXN 🐶 e incluye todas las guías más el bono de 100 moldes para confeccionar ropa para mascotas.
 
 El paquete completo cuesta $129 MXN e incluye además la guía especial "Cómo superar la pérdida de tu mejor amigo y honrar su recuerdo con amor". 💙`,
 
-      `La Biblioteca Digital tiene un precio de $79 MXN 🐾 e incluye las guías y el bono de 100 moldes. El paquete completo cuesta $129 MXN y agrega la guía especial sobre la pérdida de tu mejor amigo.`
-
+      `La Biblioteca Digital cuesta $79 MXN 🐾 e incluye las guías y el bono de 100 moldes. El paquete completo cuesta $129 MXN e incluye también la guía especial para superar la pérdida de tu mejor amigo y honrar su recuerdo con amor.`,
     ];
 
     return agregarCierre(
-      elegirAleatoria(respuestas)
+      elegirAleatoria(respuestasPrecio)
     );
   }
 
-
   /*
-    CONTENIDO
+  CONTENIDO
   */
 
   if (
     textoNormalizado.includes("que incluye") ||
-    textoNormalizado.includes("que contiene") ||
-    textoNormalizado.includes("que trae") ||
     textoNormalizado.includes("contenido") ||
-    textoNormalizado.includes("guias")
+    textoNormalizado.includes("guias") ||
+    textoNormalizado.includes("que contiene") ||
+    textoNormalizado.includes("que trae")
   ) {
+    const respuestasContenido = [
+      `La Biblioteca incluye Cuidados Básicos, Alimentación Canina, Dieta BARF, Primeros Auxilios, Manual para Dueños, Enciclopedia Canina, Geriatría, Recetario Saludable y Educación y Comportamiento. 🐶
 
-    const respuestas = [
+Además recibes el bono de 100 moldes para confeccionar ropa para mascotas.`,
 
-      `Incluye Cuidados Básicos, Alimentación Canina, Dieta BARF, Primeros Auxilios, Manual para Dueños, Enciclopedia Canina, Geriatría, Recetario Saludable y Educación y Comportamiento. 🐶
-
-Además recibes como bono 100 moldes para confeccionar ropa para mascotas.`,
-
-      `Universo Canino reúne guías de cuidados, alimentación, BARF, primeros auxilios, razas, geriatría, recetas saludables, educación y comportamiento 🐾. También incluye el bono de 100 moldes para ropa de mascotas.`
-
+      `Universo Canino reúne guías de cuidados, alimentación, BARF, primeros auxilios, razas, geriatría, recetas saludables, educación y comportamiento 🐾. También incluye 100 moldes para confeccionar ropa para mascotas.`,
     ];
 
     return agregarCierre(
-      elegirAleatoria(respuestas)
+      elegirAleatoria(respuestasContenido)
     );
   }
 
-
   /*
-    DIGITAL / PDF
+  PDF / DIGITAL
   */
 
   if (
@@ -458,48 +374,40 @@ Además recibes como bono 100 moldes para confeccionar ropa para mascotas.`,
     textoNormalizado.includes("digital") ||
     textoNormalizado.includes("fisico")
   ) {
+    const respuestasDigital = [
+      `Todo el material es digital en formato PDF 🐶. Puedes consultarlo desde tu celular, tablet o computadora y se entrega por WhatsApp después de confirmar el pago.`,
 
-    const respuestas = [
-
-      `Todo el material es digital en formato PDF 🐶. Puedes consultarlo desde celular, tablet o computadora y se entrega directamente por WhatsApp después de confirmar el pago.`,
-
-      `La Biblioteca es 100% digital en PDF 🐾. Una vez confirmado el pago, recibes el material correspondiente directamente por WhatsApp.`
-
+      `La Biblioteca es 100% digital en PDF 🐾. Después de confirmar el pago recibes el material directamente por WhatsApp.`,
     ];
 
     return agregarCierre(
-      elegirAleatoria(respuestas)
+      elegirAleatoria(respuestasDigital)
     );
   }
 
-
   /*
-    ENTREGA
+  ENTREGA
   */
 
   if (
+    textoNormalizado.includes("entrega") ||
     textoNormalizado.includes("como lo recibo") ||
     textoNormalizado.includes("cuando llega") ||
-    textoNormalizado.includes("entrega") ||
     textoNormalizado.includes("recibir")
   ) {
+    const respuestasEntrega = [
+      `La entrega se realiza directamente por WhatsApp 🐶. Una vez confirmado tu pago recibes el material correspondiente a tu compra.`,
 
-    const respuestas = [
-
-      `La entrega se realiza directamente por WhatsApp 🐶. Después de confirmar tu pago recibes el material correspondiente a tu compra.`,
-
-      `Recibes todo directamente por WhatsApp 💙. Envías tu comprobante junto con la palabra LISTO y, una vez confirmado el pago, se entrega tu material.`
-
+      `Recibes todo directamente por WhatsApp 💙. Después de realizar el pago, envías tu comprobante junto con la palabra LISTO y, una vez confirmado, se entrega el material.`,
     ];
 
     return agregarCierre(
-      elegirAleatoria(respuestas)
+      elegirAleatoria(respuestasEntrega)
     );
   }
 
-
   /*
-    PAGO
+  PAGO
   */
 
   if (
@@ -509,13 +417,11 @@ Además recibes como bono 100 moldes para confeccionar ropa para mascotas.`,
     textoNormalizado.includes("oxxo") ||
     textoNormalizado.includes("deposito")
   ) {
-
     return `Puedes realizar el pago mediante transferencia bancaria o depósito en OXXO 🐶. Después envía tu comprobante junto con la palabra LISTO y, al confirmar el pago, recibirás tu material por WhatsApp. 💙`;
   }
 
-
   /*
-    BONO
+  BONO
   */
 
   if (
@@ -523,23 +429,19 @@ Además recibes como bono 100 moldes para confeccionar ropa para mascotas.`,
     textoNormalizado.includes("patrones") ||
     textoNormalizado.includes("moldes")
   ) {
-
-    const respuestas = [
-
+    const respuestasBono = [
       `El bono incluye 100 moldes para confeccionar ropa para mascotas 🐶 y viene incluido con la Biblioteca Digital de $79 MXN.`,
 
-      `Recibes como bono 100 moldes para confeccionar ropa para mascotas 🐾, incluidos con la Biblioteca Digital Universo Canino.`
-
+      `Recibes como bono 100 moldes para confeccionar ropa para mascotas 🐾, incluidos con la Biblioteca Digital Universo Canino.`,
     ];
 
     return agregarCierre(
-      elegirAleatoria(respuestas)
+      elegirAleatoria(respuestasBono)
     );
   }
 
-
   /*
-    GUÍA DE DUELO
+  DUELO
   */
 
   if (
@@ -547,23 +449,19 @@ Además recibes como bono 100 moldes para confeccionar ropa para mascotas.`,
     textoNormalizado.includes("duelo") ||
     textoNormalizado.includes("guia especial")
   ) {
-
-    const respuestas = [
-
+    const respuestasDuelo = [
       `La guía especial se llama "Cómo superar la pérdida de tu mejor amigo y honrar su recuerdo con amor" 💙. Está incluida en el paquete completo de $129 MXN junto con la Biblioteca y el bono.`,
 
-      `El paquete completo de $129 MXN incluye la guía especial para acompañar la pérdida de tu mejor amigo y honrar su recuerdo con amor 🐾, además de toda la Biblioteca y el bono.`
-
+      `El paquete completo de $129 MXN incluye la guía especial sobre la pérdida de tu mejor amigo 🐾, además de toda la Biblioteca Digital y el bono de 100 moldes.`,
     ];
 
     return agregarCierre(
-      elegirAleatoria(respuestas)
+      elegirAleatoria(respuestasDuelo)
     );
   }
 
-
   /*
-    BARF / ALIMENTACIÓN
+  BARF / ALIMENTACIÓN
   */
 
   if (
@@ -571,221 +469,171 @@ Además recibes como bono 100 moldes para confeccionar ropa para mascotas.`,
     textoNormalizado.includes("alimentacion") ||
     textoNormalizado.includes("recetario")
   ) {
-
     return agregarCierre(
       `Sí 🐶. La Biblioteca incluye Alimentación Canina, Dieta BARF y un Recetario Saludable, además del resto de las guías de Universo Canino.`
     );
   }
 
-
   /*
-    PRIMEROS AUXILIOS
+  PRIMEROS AUXILIOS
   */
 
   if (
     textoNormalizado.includes("primeros auxilios")
   ) {
-
     return agregarCierre(
       `Sí 🐶. Primeros Auxilios es una de las guías incluidas dentro de la Biblioteca Digital Universo Canino.`
     );
   }
 
-
   return null;
 }
 
-
-/* =========================================================
-   ENDPOINT PRINCIPAL
-========================================================= */
+/*
+=========================================================
+ENDPOINT DE PRUEBA
+=========================================================
+*/
 
 app.get("/", (req, res) => {
-
   res.send("Bot ventas activo ✅");
-
 });
 
+/*
+=========================================================
+ENDPOINT /mensaje
+=========================================================
+*/
 
 app.post("/mensaje", async (req, res) => {
-
   try {
 
-    /*
-      MOSTRAR EXACTAMENTE QUÉ MANDA N8N
-    */
+    const texto =
+      req.body.texto ||
+      req.body.mensaje ||
+      req.body.message ||
+      req.body.text ||
+      "";
 
-    console.log(
-      "BODY RECIBIDO:",
-      JSON.stringify(req.body, null, 2)
-    );
-
-
-    /*
-      EXTRAER MENSAJE
-    */
-
-    const texto = obtenerTexto(req.body);
-
-
-    console.log(
-      "TEXTO DETECTADO:",
-      texto
-    );
-
+    console.log("Texto recibido:", texto);
 
     /*
-      SI NO ENCONTRAMOS TEXTO
+    SI NO HAY TEXTO
     */
 
     if (!texto) {
-
-      console.log(
-        "ADVERTENCIA: No se encontró texto en el body."
-      );
-
       return res.json({
         respuesta:
-          "Soy Sally de Universo Canino 🐶. No pude leer correctamente el mensaje. Intenta enviarlo nuevamente."
+          "Soy Sally de Universo Canino 🐶. Escríbeme tu duda y con gusto te doy la información.",
       });
     }
 
-
     /*
-      NORMALIZAR
+    RESPUESTAS DIRECTAS
     */
 
     const textoNormalizado =
       normalizarTexto(texto);
 
-
-    /*
-      BUSCAR RESPUESTA DIRECTA
-    */
-
     const directa =
       respuestaDirecta(textoNormalizado);
 
-
     if (directa) {
-
       console.log(
-        "RESPUESTA DIRECTA:",
+        "Respuesta directa:",
         directa
       );
 
       return res.json({
-        respuesta: directa
+        respuesta: directa,
       });
     }
 
+    /*
+    VERIFICAR OPENAI
+    */
+
+    if (!openai) {
+      console.error(
+        "No se puede consultar OpenAI porque falta OPENAI_API_KEY."
+      );
+
+      return res.json({
+        respuesta:
+          "Soy Sally de Universo Canino 🐶. En este momento no puedo procesar esa consulta. Intenta nuevamente en unos minutos.",
+      });
+    }
 
     /*
-      CONSULTAR OPENAI
+    OPENAI
     */
 
     console.log(
-      "ENVIANDO MENSAJE A OPENAI..."
+      "Consultando OpenAI..."
     );
-
 
     const response =
       await openai.responses.create({
-
         model: "gpt-4.1-mini",
 
         input: [
           {
             role: "system",
-            content: SYSTEM_PROMPT
+            content: SYSTEM_PROMPT,
           },
           {
             role: "user",
-            content: texto
-          }
-        ]
-
+            content: texto,
+          },
+        ],
       });
 
-
     /*
-      OBTENER RESPUESTA
+    RESPUESTA
     */
 
     let respuestaIA =
       response.output_text || "";
 
-
     respuestaIA =
       limpiarRespuesta(respuestaIA);
 
-
-    /*
-      RESPALDO
-    */
-
     if (!respuestaIA) {
-
-      console.log(
-        "OPENAI devolvió respuesta vacía."
-      );
-
       respuestaIA =
-        "Universo Canino 🐶 es una Biblioteca Digital con información práctica sobre cuidados, alimentación, primeros auxilios, educación y diferentes etapas de la vida de tu perro.";
+        "Universo Canino 🐶 es una Biblioteca Digital con información práctica sobre cuidados, alimentación, primeros auxilios, educación y las diferentes etapas de la vida de tu perro.";
     }
 
-
     console.log(
-      "RESPUESTA OPENAI:",
+      "Respuesta enviada:",
       respuestaIA
     );
 
-
-    /*
-      RESPUESTA A N8N
-    */
-
     return res.json({
-      respuesta: respuestaIA
+      respuesta: respuestaIA,
     });
-
 
   } catch (error) {
 
     console.error(
-      "ERROR COMPLETO /mensaje:",
+      "Error en /mensaje:",
       error
     );
 
-
-    if (error && error.message) {
-
-      console.error(
-        "MENSAJE DEL ERROR:",
-        error.message
-      );
-
-    }
-
-
     return res.json({
       respuesta:
-        "Soy Sally de Universo Canino 🐶. En este momento tuve un problema para procesar el mensaje. Intenta enviarlo nuevamente."
+        "Soy Sally de Universo Canino 🐶. En este momento tuve un problema para procesar tu mensaje. Intenta nuevamente en unos minutos.",
     });
-
   }
-
 });
 
-
-/* =========================================================
-   SERVIDOR
-========================================================= */
+/*
+=========================================================
+SERVIDOR
+=========================================================
+*/
 
 app.listen(PORT, () => {
-
   console.log(
     `Servidor corriendo en puerto ${PORT}`
   );
-
 });
