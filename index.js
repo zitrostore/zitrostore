@@ -6,10 +6,6 @@ const OpenAI = require("openai");
 const app = express();
 const PORT = process.env.PORT || 8080;
 
-/* =========================================================
-   MIDDLEWARE
-========================================================= */
-
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true }));
 
@@ -17,131 +13,83 @@ app.use(express.urlencoded({ extended: true }));
    OPENAI
 ========================================================= */
 
-if (!process.env.OPENAI_API_KEY) {
-  console.error("ERROR: Falta la variable OPENAI_API_KEY");
-}
-
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
 /* =========================================================
-   CONFIGURACIÓN UNIVERSO CANINO
+   PROMPT UNIVERSO CANINO
 ========================================================= */
 
 const SYSTEM_PROMPT = `
-Eres Sally Ortiz ❤️, asesora virtual de Universo Canino.
+Eres Sally Ortiz ❤️, asistente de atención de Universo Canino.
 
 Atiendes por WhatsApp a personas interesadas en la
 Biblioteca Digital Universo Canino.
 
-Tu trabajo es resolver dudas sobre el producto y ayudar
-al cliente durante su proceso de compra.
-
-ESTILO:
-- Humano.
-- Cálido.
-- Natural.
-- Cercano.
-- Claro.
-- Breve.
+RESPONDE:
+- De forma humana, cálida y natural.
+- Breve y clara.
 - Máximo 1 o 2 párrafos cortos.
-- No des respuestas innecesariamente largas.
-- Evita sonar repetitiva o robótica.
+- Sin sonar robótica.
+- Sin repetir saludos innecesariamente.
+- Sin hacer preguntas abiertas innecesarias.
 
-=========================================================
-INFORMACIÓN OFICIAL
-=========================================================
-
-Universo Canino es una Biblioteca Digital creada para
-personas que aman a sus perros y quieren aprender a
-cuidarlos mejor durante las diferentes etapas de su vida.
-
-Todo el material es DIGITAL y se entrega en formato PDF.
-
-Puede consultarse desde celular, computadora o tablet.
-
-=========================================================
-PRECIO Y PROMOCIÓN
-=========================================================
+INFORMACIÓN OFICIAL:
 
 La Biblioteca Digital Universo Canino cuesta $79 MXN.
 
-Incluye GRATIS como bono:
-100 moldes para confeccionar ropa para tu mascota.
+Incluye GRATIS:
+100 moldes para confeccionar ropa para mascotas.
 
-También existe un paquete completo por $129 MXN que incluye:
-
+El paquete completo cuesta $129 MXN e incluye:
 - Biblioteca Digital Universo Canino.
 - Bono de 100 moldes.
 - Guía especial:
-  "Cómo superar la pérdida de tu mejor amigo y honrar
-  su recuerdo con amor."
+"Cómo superar la pérdida de tu mejor amigo y honrar
+su recuerdo con amor."
 
-No cambies estos precios.
-
-=========================================================
-CONTENIDO
-=========================================================
-
-La Biblioteca Digital Universo Canino incluye:
+CONTENIDO DE LA BIBLIOTECA:
 
 1. Cuidados básicos.
 2. Alimentación y Nutrición Canina.
 3. Dieta BARF.
 4. Enciclopedia de razas.
-5. Geriatría y cuidados del perro senior.
+5. Geriatría y perro senior.
 6. Manual para mascotas.
 7. Primeros auxilios.
 8. Recetario saludable.
 9. Educación y comportamiento.
 
-=========================================================
-ENTREGA
-=========================================================
+ENTREGA:
 
-El material es digital y se entrega por WhatsApp.
+Todo el material es digital en formato PDF.
 
-Después de realizar el pago, el cliente debe enviar
-su comprobante junto con la palabra LISTO.
+Se entrega por WhatsApp después de confirmar el pago.
 
-Una vez confirmado el pago, se entrega el material
-correspondiente a la compra.
+El cliente debe enviar su comprobante junto con
+la palabra LISTO.
 
-=========================================================
-REGLAS IMPORTANTES
-=========================================================
+REGLAS:
 
-- No inventes información.
-- No inventes precios.
-- No modifiques los precios establecidos.
+- Nunca inventes precios.
+- Nunca cambies los precios.
 - No prometas resultados garantizados.
-- No afirmes que un pago fue confirmado si no existe confirmación.
-- No afirmes que un producto ya fue enviado si no existe confirmación.
-- No solicites información bancaria sensible.
+- No afirmes que un pago está confirmado si no lo sabes.
+- No afirmes que ya se entregó material si no lo sabes.
 - No menciones OpenAI.
+- No menciones Railway.
 - No menciones n8n.
 - No menciones ManyChat.
-- No menciones Railway.
 - No expliques la infraestructura técnica.
-- No hagas múltiples preguntas.
-- No hagas preguntas abiertas innecesarias.
-- No repitas saludos en cada respuesta.
-- Si el cliente únicamente saluda, responde brevemente.
-- Si pregunta algo concreto, contesta directamente.
-- Si muestra intención de compra, facilita el proceso.
-- Si pregunta por el pago, explica el procedimiento brevemente.
-- Si pregunta algo que no conoces, no inventes la respuesta.
-
-Tu objetivo es ayudar al cliente y resolver sus dudas
-de forma natural, breve y clara.
+- Si preguntan algo concreto, responde directamente.
 `;
 
 /* =========================================================
-   FUNCIONES AUXILIARES
+   NORMALIZAR TEXTO
 ========================================================= */
 
-function normalizarTexto(valor = "") {
+function normalizar(valor = "") {
   return String(valor)
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
@@ -150,18 +98,9 @@ function normalizarTexto(valor = "") {
     .trim();
 }
 
-function textoOriginal(valor = "") {
-  return String(valor).trim();
-}
-
-function contieneAlguna(texto, palabras = []) {
-  return palabras.some((palabra) =>
-    texto.includes(normalizarTexto(palabra))
-  );
-}
-
 /* =========================================================
-   EXTRAER MENSAJE RECIBIDO
+   EXTRAER MENSAJE
+   ACEPTAMOS VARIAS FORMAS DE ENTRADA
 ========================================================= */
 
 function extraerMensaje(body = {}) {
@@ -169,42 +108,53 @@ function extraerMensaje(body = {}) {
     return "";
   }
 
-  const posiblesCampos = [
+  const campos = [
     body.mensaje,
-    body.texto,
     body.message,
+    body.texto,
     body.text,
     body.pregunta,
     body.input,
+    body.ultima_entrada_texto,
+    body.ultimaEntradaTexto,
     body.last_text_input,
     body.lastTextInput,
     body["Last Text Input"],
-    body["last text input"],
+    body["Última entrada de texto"],
+    body["Ultima entrada de texto"],
   ];
 
-  for (const valor of posiblesCampos) {
+  for (const campo of campos) {
     if (
-      typeof valor === "string" &&
-      valor.trim().length > 0
+      typeof campo === "string" &&
+      campo.trim() !== ""
     ) {
-      return valor.trim();
+      return campo.trim();
     }
   }
 
-  /*
-    Algunos sistemas pueden enviar:
-    {
-      body: {
-        mensaje: "..."
-      }
-    }
-  */
-
+  // Si viene anidado dentro de body
   if (
     body.body &&
     typeof body.body === "object"
   ) {
-    return extraerMensaje(body.body);
+    const encontrado = extraerMensaje(body.body);
+
+    if (encontrado) {
+      return encontrado;
+    }
+  }
+
+  // Si viene dentro de data
+  if (
+    body.data &&
+    typeof body.data === "object"
+  ) {
+    const encontrado = extraerMensaje(body.data);
+
+    if (encontrado) {
+      return encontrado;
+    }
   }
 
   return "";
@@ -215,192 +165,196 @@ function extraerMensaje(body = {}) {
 ========================================================= */
 
 const RESPUESTAS = {
+
   hola:
-    "¡Hola! 🐶💙 Con gusto te ayudo con cualquier duda sobre la Biblioteca Digital Universo Canino, su contenido, precio, promoción, entrega o forma de pago.",
+    "¡Hola! 🐶💙 Con gusto te ayudo con cualquier duda sobre Universo Canino, su contenido, precio, promoción, entrega o forma de pago.",
 
   precio:
-    "La Biblioteca Digital Universo Canino tiene un precio especial de $79 MXN e incluye GRATIS 100 moldes para confeccionar ropa para tu mascota. 🐶💙 También puedes llevarte la biblioteca + bono + guía especial de duelo por $129 MXN.",
+    "🐶 La Biblioteca Digital Universo Canino tiene un precio especial de $79 MXN e incluye GRATIS 100 moldes para confeccionar ropa para tu mascota. También tenemos el paquete completo por $129 MXN con la guía especial de duelo.",
 
   pago:
-    "Puedes realizar tu pago y después enviarnos por WhatsApp tu comprobante junto con la palabra LISTO. 🐾 Una vez confirmado, recibirás el material correspondiente a tu compra.",
+    "💳 Para adquirir Universo Canino puedes realizar tu pago y después enviar por WhatsApp tu comprobante junto con la palabra LISTO. Una vez confirmado, recibirás el material correspondiente a tu compra.",
 
   garantia:
-    "Universo Canino es un producto digital en formato PDF. Antes de comprar puedes aclarar cualquier duda sobre el contenido, precio y entrega para que sepas exactamente qué estás adquiriendo. 🐶💙",
+    "🐶 Universo Canino es un producto digital en formato PDF. Antes de comprar puedes resolver tus dudas sobre el contenido, precio y forma de entrega para saber exactamente qué estás adquiriendo.",
 
   guia:
-    "La Biblioteca Digital Universo Canino incluye diferentes guías para ayudarte con cuidados, alimentación, educación, primeros auxilios, geriatría y más. 🐾 También contamos con la guía especial para superar la pérdida de tu mejor amigo y honrar su recuerdo con amor.",
+    "📚 Universo Canino reúne guías sobre cuidados, alimentación, Dieta BARF, razas, geriatría, primeros auxilios, recetas y educación. También contamos con una guía especial para superar la pérdida de tu mejor amigo y honrar su recuerdo con amor.",
 
   contenido:
     "📚 La biblioteca incluye Cuidados Básicos, Alimentación y Nutrición, Dieta BARF, Enciclopedia de Razas, Geriatría, Manual para Mascotas, Primeros Auxilios, Recetario Saludable y Educación y Comportamiento.",
 
   entrega:
-    "Todo el material es digital en formato PDF y se entrega directamente por WhatsApp después de confirmar tu pago. 📲🐶 Puedes consultarlo desde celular, computadora o tablet.",
+    "📲 Todo el material es digital en formato PDF y se entrega por WhatsApp después de confirmar tu pago. Puedes consultarlo desde celular, computadora o tablet.",
 
   bono:
-    "🎁 Con la Biblioteca Digital Universo Canino de $79 MXN recibes GRATIS un bono de 100 moldes para confeccionar ropa para tu mascota.",
+    "🎁 Al adquirir la Biblioteca Digital Universo Canino por $79 MXN recibes GRATIS un bono de 100 moldes para confeccionar ropa para tu mascota.",
 
   acceso:
-    "📲 El material es completamente digital. Después de confirmar tu pago lo recibes por WhatsApp y puedes consultarlo desde tu celular, computadora o tablet.",
+    "📲 El acceso es digital. Una vez confirmado tu pago, recibirás por WhatsApp el material correspondiente y podrás consultarlo desde celular, computadora o tablet.",
 
   promocion:
-    "🐶💙 La promoción de Universo Canino te permite llevarte la Biblioteca Digital por $79 MXN e incluye GRATIS 100 moldes para confeccionar ropa para tu mascota. También puedes elegir el paquete completo con la guía especial de duelo por $129 MXN.",
+    "🐶💙 La promoción de Universo Canino es de $79 MXN por la Biblioteca Digital más 100 moldes GRATIS. También puedes llevarte el paquete completo con Biblioteca + bono + guía especial de duelo por $129 MXN."
 };
 
 /* =========================================================
-   DETECTAR PALABRAS CLAVE
+   DETECTOR DE PALABRAS
 ========================================================= */
 
-function buscarRespuestaDirecta(mensaje) {
-  const texto = normalizarTexto(mensaje);
+function tiene(texto, palabras) {
+  return palabras.some((palabra) =>
+    texto.includes(normalizar(palabra))
+  );
+}
 
-  if (!texto) {
-    return null;
-  }
+function respuestaPorPalabraClave(mensaje) {
 
-  /*
-    PROMOCIÓN
-  */
+  const texto = normalizar(mensaje);
+
+  if (!texto) return null;
+
+  /* PROMOCION */
+
   if (
-    contieneAlguna(texto, [
+    tiene(texto, [
       "promocion",
+      "promoción",
       "promo",
       "oferta",
-      "descuento",
-      "promociones",
+      "descuento"
     ])
   ) {
     return RESPUESTAS.promocion;
   }
 
-  /*
-    PRECIO
-  */
+  /* PRECIO */
+
   if (
-    contieneAlguna(texto, [
+    tiene(texto, [
       "precio",
       "cuanto cuesta",
+      "cuánto cuesta",
       "cuanto vale",
+      "cuánto vale",
       "costo",
       "cuanto sale",
-      "cuanto es",
+      "cuánto sale"
     ])
   ) {
     return RESPUESTAS.precio;
   }
 
-  /*
-    PAGO
-  */
+  /* PAGO */
+
   if (
-    contieneAlguna(texto, [
+    tiene(texto, [
       "pago",
       "pagar",
+      "quiero pagar",
       "como pago",
+      "cómo pago",
       "deposito",
-      "transferencia",
-      "transferir",
+      "depósito",
+      "transferencia"
     ])
   ) {
     return RESPUESTAS.pago;
   }
 
-  /*
-    GARANTÍA
-  */
+  /* GARANTIA */
+
   if (
-    contieneAlguna(texto, [
+    tiene(texto, [
       "garantia",
-      "garantizado",
+      "garantía"
     ])
   ) {
     return RESPUESTAS.garantia;
   }
 
-  /*
-    ENTREGA
-  */
+  /* ENTREGA */
+
   if (
-    contieneAlguna(texto, [
+    tiene(texto, [
       "entrega",
       "como lo recibo",
-      "como recibo",
-      "cuando recibo",
+      "cómo lo recibo",
+      "cuando lo recibo",
+      "cuándo lo recibo",
       "envio",
-      "me lo mandan",
+      "envío",
+      "me lo mandan"
     ])
   ) {
     return RESPUESTAS.entrega;
   }
 
-  /*
-    BONO
-  */
+  /* BONO */
+
   if (
-    contieneAlguna(texto, [
+    tiene(texto, [
       "bono",
       "moldes",
-      "patrones",
+      "patrones"
     ])
   ) {
     return RESPUESTAS.bono;
   }
 
-  /*
-    ACCESO
-  */
+  /* ACCESO */
+
   if (
-    contieneAlguna(texto, [
+    tiene(texto, [
       "acceso",
       "acceder",
-      "descarga",
       "descargar",
-      "pdf",
+      "descarga",
+      "pdf"
     ])
   ) {
     return RESPUESTAS.acceso;
   }
 
-  /*
-    CONTENIDO
-  */
+  /* CONTENIDO */
+
   if (
-    contieneAlguna(texto, [
+    tiene(texto, [
       "contenido",
       "que incluye",
+      "qué incluye",
       "que contiene",
+      "qué contiene",
       "que trae",
-      "incluye",
+      "qué trae"
     ])
   ) {
     return RESPUESTAS.contenido;
   }
 
-  /*
-    GUÍA
-  */
+  /* GUIA */
+
   if (
-    contieneAlguna(texto, [
+    tiene(texto, [
       "guia",
+      "guía",
       "guias",
+      "guías"
     ])
   ) {
     return RESPUESTAS.guia;
   }
 
-  /*
-    HOLA
-    Lo dejamos al final para evitar interferencias.
-  */
-  const saludos = [
-    "hola",
-    "holi",
-    "buenas",
-    "buen dia",
-    "buenas tardes",
-    "buenas noches",
-  ];
+  /* HOLA */
 
-  if (saludos.includes(texto)) {
+  if (
+    tiene(texto, [
+      "hola",
+      "buen dia",
+      "buen día",
+      "buenas tardes",
+      "buenas noches"
+    ])
+  ) {
     return RESPUESTAS.hola;
   }
 
@@ -408,174 +362,207 @@ function buscarRespuestaDirecta(mensaje) {
 }
 
 /* =========================================================
-   FUNCIÓN ÚNICA DE SALIDA
+   FUNCIÓN DE RESPUESTA
+
+   IMPORTANTE:
+   SIEMPRE DEVUELVE:
+   {
+      "respuesta": "..."
+   }
+
+   PARA QUE n8n Y MANYCHAT PUEDAN LEER $.respuesta
 ========================================================= */
 
-function enviarRespuesta(res, texto, status = 200) {
-  const respuesta =
-    typeof texto === "string" && texto.trim()
-      ? texto.trim()
-      : "Con gusto te ayudo con cualquier duda sobre Universo Canino. 🐶💙";
+function responder(res, texto, status = 200) {
 
-  /*
-    ESTA ESTRUCTURA NO DEBE CAMBIARSE.
+  let respuesta = texto;
 
-    n8n recibe:
-    {
-      "respuesta": "..."
-    }
+  if (
+    typeof respuesta !== "string" ||
+    respuesta.trim() === ""
+  ) {
+    respuesta =
+      "Con gusto te ayudo con cualquier duda sobre Universo Canino. 🐶💙";
+  }
 
-    ManyChat debe mapear:
-    $.respuesta -> respuesta_ia
-  */
-
-  return res.status(status).json({
-    respuesta,
-  });
+  return res
+    .status(status)
+    .type("application/json")
+    .json({
+      respuesta: respuesta.trim()
+    });
 }
 
 /* =========================================================
-   HEALTH CHECK
+   RUTA DE PRUEBA
 ========================================================= */
 
 app.get("/", (req, res) => {
+
   return res.status(200).json({
     ok: true,
     servicio: "Universo Canino",
-    estado: "activo",
+    estado: "activo"
   });
+
 });
 
 /* =========================================================
-   ENDPOINT PRINCIPAL
+   ENDPOINT /mensaje
 ========================================================= */
 
 app.post("/mensaje", async (req, res) => {
+
+  console.log("\n======================================");
+  console.log("NUEVA SOLICITUD");
+  console.log("FECHA:", new Date().toISOString());
+  console.log("BODY COMPLETO:");
+  console.log(JSON.stringify(req.body, null, 2));
+
   try {
-    console.log("======================================");
-    console.log("NUEVA SOLICITUD /mensaje");
-    console.log("BODY:", JSON.stringify(req.body));
+
+    /* -----------------------------------------
+       1. EXTRAER MENSAJE
+    ----------------------------------------- */
 
     const mensaje = extraerMensaje(req.body);
 
-    console.log("MENSAJE EXTRAIDO:", mensaje);
+    console.log("MENSAJE EXTRAIDO:");
+    console.log(mensaje || "[VACIO]");
 
-    /*
-      PASO 1:
-      Comprobar que realmente llegó un mensaje.
-    */
+    /* -----------------------------------------
+       2. SI NO LLEGÓ TEXTO
+    ----------------------------------------- */
 
     if (!mensaje) {
-      console.warn(
-        "ADVERTENCIA: La solicitud llegó sin mensaje reconocible."
+
+      console.error(
+        "ERROR: llegó la petición pero no encontré el texto."
       );
 
-      console.warn(
-        "BODY RECIBIDO:",
-        JSON.stringify(req.body)
-      );
-
-      return enviarRespuesta(
+      return responder(
         res,
-        "Con gusto te ayudo con Universo Canino. 🐶💙 Puedes preguntarme por precio, promoción, contenido, bono, entrega o forma de pago."
+        "Con gusto te ayudo con Universo Canino. 🐶💙 Puedes preguntarme por precio, promoción, contenido, entrega, bono o forma de pago."
       );
     }
 
-    /*
-      PASO 2:
-      Buscar respuesta directa.
-    */
+    /* -----------------------------------------
+       3. PALABRAS CLAVE
+    ----------------------------------------- */
 
-    const respuestaDirecta =
-      buscarRespuestaDirecta(mensaje);
+    const directa =
+      respuestaPorPalabraClave(mensaje);
 
-    if (respuestaDirecta) {
+    if (directa) {
+
       console.log(
-        "TIPO DE RESPUESTA: PALABRA CLAVE"
+        "RESPUESTA DIRECTA ACTIVADA"
       );
 
       console.log(
         "RESPUESTA:",
-        respuestaDirecta
+        directa
       );
 
-      return enviarRespuesta(
+      return responder(
         res,
-        respuestaDirecta
+        directa
       );
     }
 
-    /*
-      PASO 3:
-      Si no corresponde a una palabra clave,
-      utilizamos OpenAI.
-    */
+    /* -----------------------------------------
+       4. SI NO HAY API KEY
+    ----------------------------------------- */
 
     if (!process.env.OPENAI_API_KEY) {
+
       console.error(
-        "OPENAI_API_KEY NO CONFIGURADA"
+        "ERROR: OPENAI_API_KEY NO CONFIGURADA"
       );
 
-      return enviarRespuesta(
+      return responder(
         res,
-        "Con gusto te ayudo con Universo Canino. 🐶💙 Puedes preguntarme por precio, promoción, contenido, bono, entrega o forma de pago."
+        "Con gusto te ayudo con Universo Canino. 🐶💙 Puedes preguntarme por precio, promoción, contenido, entrega, bono o forma de pago."
       );
     }
 
+    /* -----------------------------------------
+       5. CONSULTAR OPENAI
+    ----------------------------------------- */
+
     console.log(
-      "TIPO DE RESPUESTA: OPENAI"
+      "CONSULTANDO OPENAI..."
     );
 
     const completion =
       await openai.chat.completions.create({
+
         model: "gpt-4.1-mini",
 
         messages: [
           {
             role: "system",
-            content: SYSTEM_PROMPT,
+            content: SYSTEM_PROMPT
           },
           {
             role: "user",
-            content: textoOriginal(mensaje),
-          },
+            content: mensaje
+          }
         ],
 
-        temperature: 0.6,
-        max_tokens: 220,
+        temperature: 0.5,
+        max_tokens: 220
       });
 
+    /* -----------------------------------------
+       6. EXTRAER RESPUESTA
+    ----------------------------------------- */
+
     const respuestaIA =
-      completion?.choices?.[0]?.message?.content;
+      completion &&
+      completion.choices &&
+      completion.choices[0] &&
+      completion.choices[0].message &&
+      completion.choices[0].message.content
+        ? completion.choices[0].message.content.trim()
+        : "";
 
-    if (
-      !respuestaIA ||
-      typeof respuestaIA !== "string" ||
-      !respuestaIA.trim()
-    ) {
-      console.error(
-        "OpenAI respondió sin contenido utilizable."
-      );
+    console.log(
+      "RESPUESTA OPENAI:"
+    );
 
-      return enviarRespuesta(
+    console.log(
+      respuestaIA || "[VACIA]"
+    );
+
+    /* -----------------------------------------
+       7. RESPUESTA VACÍA DE OPENAI
+    ----------------------------------------- */
+
+    if (!respuestaIA) {
+
+      return responder(
         res,
-        "Con gusto te ayudo con Universo Canino. 🐶💙 Puedes preguntarme sobre la biblioteca, precio, contenido, entrega o forma de pago."
+        "Con gusto te ayudo con Universo Canino. 🐶💙 Puedes preguntarme sobre precio, contenido, promoción, entrega o forma de pago."
       );
     }
 
-    console.log(
-      "RESPUESTA OPENAI:",
-      respuestaIA
-    );
+    /* -----------------------------------------
+       8. RESPUESTA FINAL
+    ----------------------------------------- */
 
-    return enviarRespuesta(
+    return responder(
       res,
       respuestaIA
     );
 
   } catch (error) {
+
     console.error(
-      "ERROR EN /mensaje:",
+      "ERROR GENERAL EN /mensaje:"
+    );
+
+    console.error(
       error?.message || error
     );
 
@@ -584,37 +571,40 @@ app.post("/mensaje", async (req, res) => {
     }
 
     /*
-      IMPORTANTE:
-      Aunque OpenAI tenga un error,
-      seguimos devolviendo la propiedad
-      "respuesta" para no romper n8n/ManyChat.
+      INCLUSO SI OPENAI FALLA,
+      DEVOLVEMOS $.respuesta.
     */
 
-    return enviarRespuesta(
+    return responder(
       res,
-      "En este momento tuve un pequeño inconveniente para procesar tu mensaje. 🐶💙 Intenta nuevamente en un momento."
+      "En este momento tuve un inconveniente para procesar tu mensaje. 🐶💙 Intenta nuevamente en un momento."
     );
   }
 });
 
 /* =========================================================
-   RUTAS NO EXISTENTES
+   404
 ========================================================= */
 
 app.use((req, res) => {
+
   return res.status(404).json({
-    respuesta: "Ruta no encontrada.",
+    respuesta: "Ruta no encontrada."
   });
+
 });
 
 /* =========================================================
-   INICIAR SERVIDOR
+   SERVIDOR
 ========================================================= */
 
 app.listen(PORT, () => {
-  console.log("======================================");
-  console.log("UNIVERSO CANINO ACTIVO");
+
+  console.log("\n======================================");
+  console.log("UNIVERSO CANINO");
+  console.log("SERVIDOR ACTIVO");
   console.log(`PUERTO: ${PORT}`);
-  console.log("ENDPOINT PRINCIPAL: POST /mensaje");
-  console.log("======================================");
+  console.log("POST /mensaje");
+  console.log("======================================\n");
+
 });
